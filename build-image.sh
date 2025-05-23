@@ -10,7 +10,7 @@ function curl() {
 }
 
 shared_lib="$(dirname "${BASH_SOURCE[0]}")/.shared"
-[[ -e $shared_lib ]] || curl "https://raw.githubusercontent.com/mariowi/docker-shared/v1/download.sh?_=$(date +%s)" | bash -s v1 "$shared_lib" || exit 1
+[[ -e $shared_lib ]] || curl "https://raw.githubusercontent.com/MarioWi/docker-shared/v1/download.sh?_=$(date +%s)" | bash -s v1 "$shared_lib" || exit 1
 # shellcheck disable=SC1091  # Not following: $shared_lib/lib/build-image-init.sh was not specified as input
 source "$shared_lib/lib/build-image-init.sh"
 
@@ -168,6 +168,8 @@ case $base_image_name in
    *) echo "ERROR: Unsupported base image $base_image_name"; exit 1 ;;
 esac
 
+GIT_REPO_URL="$(git config --get remote.origin.url)"
+
 # common build arguments
 build_opts=(
    --builder "$builder_name"
@@ -181,7 +183,7 @@ build_opts=(
    --build-arg GIT_BRANCH="${GIT_BRANCH:-$(git rev-parse --abbrev-ref HEAD)}"
    --build-arg GIT_COMMIT_DATE="$(date -d "@$(git log -1 --format='%at')" --utc +'%Y-%m-%d %H:%M:%S UTC')"
    --build-arg GIT_COMMIT_HASH="$(git rev-parse --short HEAD)"
-   --build-arg GIT_REPO_URL="$(git config --get remote.origin.url)"
+   --build-arg GIT_REPO_URL="${GIT_REPO_URL,,}"
    --build-arg SOFTHSM_SOURCE_URL="$softhsm_source_url"
    --build-arg PKCS11_PROXY_SOURCE_URL="https://codeload.github.com/smallstep/pkcs11-proxy/tar.gz/refs/heads/master"
    --build-arg TZ="${TZ:-"Europe/​Berlin"}"

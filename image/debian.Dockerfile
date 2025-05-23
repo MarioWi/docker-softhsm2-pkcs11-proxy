@@ -36,23 +36,25 @@ RUN --mount=type=bind,source=.shared,target=/mnt/shared <<EOF
   echo "Installing required dev packages..."
   echo "#################################################"
   apt-get install --no-install-recommends -y \
-    `# required by curl:` \
-    ca-certificates \
-    curl \
-    `# required for autogen.sh:` \
-    autoconf \
-    automake \
-    libtool \
-    python3-pkgconfig \
-    `# required for configure/make:` \
-    build-essential \
-    libssl-dev \
-    `# additional packages required by softhsm:` \
-    sqlite3 \
-    libsqlite3-dev \
-    `# additional packages required by pkcs11-proxy:` \
-    cmake \
-    libseccomp-dev
+     `# required by curl:` \
+     ca-certificates \
+     curl \
+     `# required for autogen.sh:` \
+     autoconf \
+     automake \
+     libtool \
+     python3-pkgconfig \
+     `# required for configure/make:` \
+     build-essential \
+     libssl-dev \
+     `# additional packages required by softhsm:` \
+     sqlite3 \
+     libsqlite3-dev \
+     `# additional packages required by pkcs11-proxy:` \
+     cmake \
+     libseccomp-dev \
+     `# additional packages required for proxying HSM:` \
+     openssh-server
 
 EOF
 
@@ -99,6 +101,8 @@ EOF
 # hadolint ignore=DL3006
 FROM ${BASE_IMAGE}
 
+LABEL maintainer="Vegard IT GmbH (vegardit.com)"
+
 # https://github.com/hadolint/hadolint/wiki/DL3002 Last USER should not be root
 # hadolint ignore=DL3002
 USER root
@@ -121,10 +125,10 @@ RUN --mount=type=bind,source=.shared,target=/mnt/shared <<EOF
   echo "Installing required packages..."
   echo "#################################################"
   apt-get install --no-install-recommends -y \
-    libssl3 \
-    opensc `# contains pkcs11-tool` \
-    libsqlite3-0 \
-    tini
+     libssl3 \
+     opensc `# contains pkcs11-tool` \
+     libsqlite3-0 \
+     tini
 
   /mnt/shared/cmd/debian-cleanup.sh
 
@@ -162,35 +166,26 @@ ENV \
   PKCS11_DAEMON_SOCKET="tls://0.0.0.0:2345" \
   PKCS11_PROXY_TLS_PSK_FILE="/opt/test.tls.psk"
 
-ARG OCI_authors
-ARG OCI_title
-ARG OCI_description
-ARG OCI_source
-ARG OCI_revision
-ARG OCI_version
-ARG OCI_created
-
+ARG BUILD_DATE
 ARG GIT_BRANCH
+ARG GIT_COMMIT_HASH
 ARG GIT_COMMIT_DATE
+ARG GIT_REPO_URL
 
-# https://github.com/opencontainers/image-spec/blob/main/annotations.md
 LABEL \
-  org.opencontainers.image.title="$OCI_title" \
-  org.opencontainers.image.description="$OCI_description" \
-  org.opencontainers.image.source="$OCI_source" \
-  org.opencontainers.image.revision="$OCI_revision" \
-  org.opencontainers.image.version="$OCI_version" \
-  org.opencontainers.image.created="$OCI_created"
-
-LABEL maintainer="$OCI_authors"
+  org.label-schema.schema-version="1.0" \
+  org.label-schema.build-date=$BUILD_DATE \
+  org.label-schema.vcs-ref=$GIT_COMMIT_HASH \
+  org.label-schema.vcs-url=$GIT_REPO_URL
 
 RUN <<EOF
-  #!/bin/ash
-  echo -e "
-GIT_REPO:    $OCI_source
-GIT_BRANCH:  $GIT_BRANCH
-GIT_COMMIT:  $OCI_revision @ $GIT_COMMIT_DATE
-IMAGE_BUILD: $OCI_created" >/opt/build_info
+  set -eu
+  #shellcheck disable=SC3037  # In POSIX sh, echo flags are undefined.
+  echo -e "\
+GIT_REPO:    $GIT_REPO_URL\n\
+GIT_BRANCH:  $GIT_BRANCH\n\
+GIT_COMMIT:  $GIT_COMMIT_HASH @ $GIT_COMMIT_DATE\n\
+IMAGE_BUILD: $BUILD_DATE" >/opt/build_info
   cat /opt/build_info
 
   mkdir -p /var/lib/softhsm/tokens/
@@ -199,10 +194,35 @@ IMAGE_BUILD: $OCI_created" >/opt/build_info
 
 EOF
 
+
+ARG SSH_PUB_KEY
+
+RUN <<EOF
+    mkdir -p /root/.ssh
+    chmod 0700 /root/.ssh
+    echo "$SSH_PUB_KEY" > /root/.ssh/authorized_keys
+    ssh-keygen -A
+    echo -e "PasswordAuthentication no" >> /etc/ssh/sshd_config 
+
+EOF
+
+# entrypoint
+RUN <<EOF
+    { \
+    echo "#!/bin/bash -eu"; \
+    echo "ln -fs /usr/share/zoneinfo/${TZ} /etc/localtime"; \
+    echo "echo \"root:${ROOT_PASSWORD}\" | chpasswd"; \
+    echo "/opt/run.sh"; \
+    } > /usr/local/bin/entry_point.sh; \
+    chmod +x /usr/local/bin/entry_point.sh;
+
+EOF
+
 EXPOSE 2345
+EXPOSE 22
 
 VOLUME "/var/lib/softhsm/"
 
-ENTRYPOINT ["/usr/bin/tini", "--"]
+ENTRYPOINT ["entry_point.sh"]
 
-CMD ["/bin/bash", "/opt/run.sh"]
+CMD    ["/usr/sbin/sshd", "-D", "-e"]

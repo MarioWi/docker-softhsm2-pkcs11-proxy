@@ -10,7 +10,7 @@ function curl() {
 }
 
 shared_lib="$(dirname "${BASH_SOURCE[0]}")/.shared"
-[[ -e $shared_lib ]] || curl "https://raw.githubusercontent.com/vegardit/docker-shared/v1/download.sh?_=$(date +%s)" | bash -s v1 "$shared_lib" || exit 1
+[[ -e $shared_lib ]] || curl "https://raw.githubusercontent.com/mariowi/docker-shared/v1/download.sh?_=$(date +%s)" | bash -s v1 "$shared_lib" || exit 1
 # shellcheck disable=SC1091  # Not following: $shared_lib/lib/build-image-init.sh was not specified as input
 source "$shared_lib/lib/build-image-init.sh"
 
@@ -21,23 +21,13 @@ fi
 #################################################
 # specify target image repo/tag
 #################################################
-image_repo=${DOCKER_IMAGE_REPO:-vegardit/softhsm2-pkcs11-proxy}
-base_image_name=${DOCKER_BASE_IMAGE:-alpine:latest}
+image_repo=${DOCKER_IMAGE_REPO:-mariowi/softhsm2-pkcs11-proxy}
+base_image_name=${DOCKER_BASE_IMAGE:-alpine:3}
 case $base_image_name in
    *alpine*) base_image_linux_flavor=alpine ;;
    *debian*) base_image_linux_flavor=debian ;;
    *) echo "ERROR: Unsupported base image $base_image_name"; exit 1 ;;
 esac
-
-declare -A image_meta=(
-   [authors]="Vegard IT GmbH (vegardit.com)"
-   [title]="$image_repo"
-   [description]="Docker image to run a virtual HSM (Hardware Security Module) network service based on SoftHSM2 and pkcs11-proxy"
-   [source]="$(git config --get remote.origin.url)"
-   [revision]="$(git rev-parse --short HEAD)"
-   [version]="$(git rev-parse --short HEAD)"
-   [created]="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
-)
 
 app_version=${SOFTHSM_VERSION:-latest}
 case $app_version in \
@@ -154,14 +144,22 @@ builder_name="bx-$(date +%s)-$RANDOM"
    --bootstrap \
    --config /etc/buildkitd.toml \
    --driver-opt network=host `# required for buildx to access the temporary registry` \
-   --driver docker-container \
-   --driver-opt image=ghcr.io/dockerhub-mirror/moby__buildkit:latest)
+   --driver docker-container)
 trap 'docker buildx rm --force "$builder_name"' EXIT
 
 
 #################################################
 # build the image
 #################################################
+log INFO "Pulling base image [$base_image_name]..."
+if [[ ${build_multi_arch:-} == "true" ]]; then
+   for platform in ${platforms//,/ }; do
+      docker pull --platform "$platform" "$base_image_name"
+   done
+else
+   docker pull "$base_image_name"
+fi
+
 log INFO "Building docker image [$image_name]..."
 
 case $base_image_name in
@@ -172,26 +170,28 @@ esac
 
 # common build arguments
 build_opts=(
-   --file "image/$dockerfile"
    --builder "$builder_name"
    --progress=plain
-   --pull
+   --file "image/$dockerfile"
    --build-arg INSTALL_SUPPORT_TOOLS="${INSTALL_SUPPORT_TOOLS:-0}"
    # using the current date as value for BASE_LAYER_CACHE_KEY, i.e. the base layer cache (that holds system packages with security updates) will be invalidate once per day
    --build-arg BASE_LAYER_CACHE_KEY="$base_layer_cache_key"
    --build-arg BASE_IMAGE="$base_image_name"
+   --build-arg BUILD_DATE="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
    --build-arg GIT_BRANCH="${GIT_BRANCH:-$(git rev-parse --abbrev-ref HEAD)}"
    --build-arg GIT_COMMIT_DATE="$(date -d "@$(git log -1 --format='%at')" --utc +'%Y-%m-%d %H:%M:%S UTC')"
+   --build-arg GIT_COMMIT_HASH="$(git rev-parse --short HEAD)"
+   --build-arg GIT_REPO_URL="$(git config --get remote.origin.url)"
    --build-arg SOFTHSM_SOURCE_URL="$softhsm_source_url"
    --build-arg PKCS11_PROXY_SOURCE_URL="https://codeload.github.com/smallstep/pkcs11-proxy/tar.gz/refs/heads/master"
+   --build-arg TZ="${TZ:-"Europe/​Berlin"}"
+   --build-arg ROOT_PASSWORD="${ROOT_PASSWORD:-"ChangeMe!"}"
    #--build-arg PKCS11_PROXY_SOURCE_URL="https://codeload.github.com/scobiej/pkcs11-proxy/tar.gz/refs/heads/osx-openssl1-1"
    #--build-arg PKCS11_PROXY_SOURCE_URL="https://codeload.github.com/SUNET/pkcs11-proxy/tar.gz/refs/heads/master"
 )
-
-for key in "${!image_meta[@]}"; do
-  build_opts+=(--build-arg "OCI_${key}=${image_meta[$key]}")
-  build_opts+=(--annotation "index:org.opencontainers.image.${key}=${image_meta[$key]}")
-done
+if [[ -n "${SSH_PUB_KEY}" ]]; then
+   build_opts+=(--build-arg SSH_PUB_KEY="$SSH_PUB_KEY")
+fi
 
 if [[ ${build_multi_arch:-} == "true" ]]; then
    build_opts+=(--push)
@@ -211,8 +211,8 @@ fi
 # load image into local docker daemon for testing
 #################################################
 if [[ ${build_multi_arch:-} == "true" ]]; then
-   (set -x; docker pull "$local_registry/$image_name")
-   (set -x; docker tag "$local_registry/$image_name" "$image_name")
+   docker pull "$local_registry/$image_name"
+   docker tag "$local_registry/$image_name" "$image_name"
 fi
 
 
@@ -249,11 +249,11 @@ function regctl() {
 
 if [[ ${DOCKER_PUSH:-} == "true" ]]; then
    for tag in "${tags[@]}"; do
-      regctl image copy --referrers "$local_registry/$image_name" "docker.io/$tag"
+      regctl image copy "$local_registry/$image_name" "docker.io/$tag"
    done
 fi
 if [[ ${DOCKER_PUSH_GHCR:-} == true ]]; then
    for tag in "${tags[@]}"; do
-      regctl image copy --referrers "$local_registry/$image_name" "ghcr.io/$tag"
+      regctl image copy "$local_registry/$image_name" "ghcr.io/$tag"
    done
 fi

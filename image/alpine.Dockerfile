@@ -28,6 +28,7 @@ SHELL ["/bin/ash", "-euo", "pipefail", "-c"]
 # https://github.com/hadolint/hadolint/wiki/DL3018 Pin versions
 # hadolint ignore=DL3018
 RUN --mount=type=bind,source=.shared,target=/mnt/shared <<EOF
+  #!/bin/ash
   /mnt/shared/cmd/alpine-install-os-updates.sh
 
   echo "#################################################"
@@ -105,6 +106,8 @@ USER root
 
 ARG BASE_LAYER_CACHE_KEY
 
+SHELL ["/bin/ash", "-euo", "pipefail", "-c"]
+
 # https://github.com/hadolint/hadolint/wiki/DL3018 Pin versions
 # hadolint ignore=DL3018
 RUN --mount=type=bind,source=.shared,target=/mnt/shared <<EOF
@@ -170,8 +173,7 @@ LABEL \
   org.label-schema.vcs-url=$GIT_REPO_URL
 
 RUN <<EOF
-  set -eu
-  #shellcheck disable=SC3037  # In POSIX sh, echo flags are undefined.
+  #!/bin/ash
   echo -e "\
 GIT_REPO:    $GIT_REPO_URL\n\
 GIT_BRANCH:  $GIT_BRANCH\n\

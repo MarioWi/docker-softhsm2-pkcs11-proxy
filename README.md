@@ -16,8 +16,10 @@
 
 > **SoftHSM has been developed for development purposes only. Don't use in production!**
 
-Multi-arch Docker image to run a virtual HSM (Hardware Security Module) network service based on [SoftHSM2](https://github.com/softhsm/SoftHSMv2) and
+A multi-arch Docker image to run a virtual HSM (Hardware Security Module) network service based on [SoftHSM2](https://github.com/softhsm/SoftHSMv2) and
 [pkcs11-proxy](https://github.com/SUNET/pkcs11-proxy/).
+
+Automatically rebuilt **weekly** to include the latest OS security fixes.
 
 Client applications can communicate with the HSM via TCP/TLS using libpkcs11-proxy.so and an OpenSSL TLS-PSK:
 

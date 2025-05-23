@@ -111,6 +111,8 @@ ARG LC_ALL=C
 ARG BASE_LAYER_CACHE_KEY
 ARG INSTALL_SUPPORT_TOOLS=0
 
+SHELL ["/bin/bash", "-euo", "pipefail", "-c"]
+
 # https://github.com/hadolint/hadolint/wiki/DL3008 Pin versions
 # hadolint ignore=DL3008
 RUN --mount=type=bind,source=.shared,target=/mnt/shared <<EOF

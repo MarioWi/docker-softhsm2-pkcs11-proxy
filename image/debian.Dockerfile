@@ -209,11 +209,11 @@ EOF
 # entrypoint
 RUN <<EOF
     { \
-    echo '#!/bin/bash -eu'; \
-    echo 'ln -fs /usr/share/zoneinfo/${TZ} /etc/localtime'; \
-    echo 'echo "root:${ROOT_PASSWORD}" | chpasswd'; \
-    echo '/opt/run.sh'; \
-    echo 'exec "$@"'; \
+    echo "#!/bin/bash -eu"; \
+    echo "ln -fs /usr/share/zoneinfo/${TZ} /etc/localtime"; \
+    echo "echo \"root:${ROOT_PASSWORD}\" | chpasswd"; \
+    echo "/opt/run.sh"; \
+    echo "exec \"$@\""; \
     } > /usr/local/bin/entry_point.sh; \
     chmod +x /usr/local/bin/entry_point.sh;
 

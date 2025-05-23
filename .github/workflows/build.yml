@@ -150,6 +150,10 @@ jobs:
         DOCKER_IMAGE_REPO: ${{ github.repository_owner }}/${{ env.DOCKER_REPO_NAME }}
         SOFTHSM_VERSION: ${{ matrix.SOFTHSM_VERSION }}
         TRIVY_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        TZ: Europe/​Berlin
+        ROOT_PASSWORD: ${{ secrets.ROOT_PASSWORD }}
+        SSH_PUB_KEY: ${{ secrets.SSH_PUB_KEY }}
+
       run: bash build-image.sh
 
     outputs:

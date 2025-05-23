@@ -52,7 +52,9 @@ RUN --mount=type=bind,source=.shared,target=/mnt/shared <<EOF
      libsqlite3-dev \
      `# additional packages required by pkcs11-proxy:` \
      cmake \
-     libseccomp-dev
+     libseccomp-dev \
+     `# additional packages required for proxying HSM:` \
+     openssh-server
 
 EOF
 
@@ -196,24 +198,32 @@ EOF
 ARG SSH_PUB_KEY
 
 RUN <<EOF
-    mkdir -p /root/.ssh \
-    && chmod 0700 /root/.ssh \
-    && passwd -u root \
-    && echo "$SSH_PUB_KEY" > /root/.ssh/authorized_keys \
-    && apk add openrc openssh \
-    && ssh-keygen -A \
-    && echo -e "PasswordAuthentication no" >> /etc/ssh/sshd_config \
-    && mkdir -p /run/openrc \
-    && touch /run/openrc/softlevel
+    mkdir -p /root/.ssh
+    chmod 0700 /root/.ssh
+    echo "$SSH_PUB_KEY" > /root/.ssh/authorized_keys
+    ssh-keygen -A
+    echo -e "PasswordAuthentication no" >> /etc/ssh/sshd_config 
 
 EOF
 
+# entrypoint
+RUN <<EOF
+    { \
+    echo '#!/bin/bash -eu'; \
+    echo 'ln -fs /usr/share/zoneinfo/${TZ} /etc/localtime'; \
+    echo 'echo "root:${ROOT_PASSWORD}" | chpasswd'; \
+    echo '/opt/run.sh'; \
+    echo 'exec "$@"'; \
+    } > /usr/local/bin/entry_point.sh; \
+    chmod +x /usr/local/bin/entry_point.sh;
+
+EOF
 
 EXPOSE 2345
 EXPOSE 22
 
 VOLUME "/var/lib/softhsm/"
 
-ENTRYPOINT ["/usr/bin/tini", "--"]
+ENTRYPOINT ["entry_point.sh"]
 
-CMD ["/bin/bash", "/opt/run.sh"]
+CMD    ["/usr/sbin/sshd", "-D", "-e"]

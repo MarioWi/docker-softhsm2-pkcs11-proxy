@@ -189,22 +189,22 @@ EOF
 
 ARG SSH_PUB_KEY
 
-RUN <<EOF
-    mkdir -p /root/.ssh \
-    && chmod 0700 /root/.ssh \
-    && passwd -u root \
-    && echo "$SSH_PUB_KEY" > /root/.ssh/authorized_keys \
-    && apk add openrc openssh \
-    && ssh-keygen -A \
-    && echo -e "PasswordAuthentication no" >> /etc/ssh/sshd_config \
-    && mkdir -p /run/openrc \
-    && touch /run/openrc/softlevel
-
-EOF
+#RUN <<EOF
+#    mkdir -p /root/.ssh \
+#    && chmod 0700 /root/.ssh \
+#    && passwd -u root \
+#    && echo "$SSH_PUB_KEY" > /root/.ssh/authorized_keys \
+#    && apk add openrc openssh \
+#    && ssh-keygen -A \
+#    && echo -e "PasswordAuthentication no" >> /etc/ssh/sshd_config \
+#    && mkdir -p /run/openrc \
+#    && touch /run/openrc/softlevel
+#
+#EOF
 
 
 EXPOSE 2345
-EXPOSE 22
+#EXPOSE 22
 
 VOLUME "/var/lib/softhsm/"
 

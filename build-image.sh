@@ -10,7 +10,7 @@ function curl() {
 }
 
 shared_lib="$(dirname "${BASH_SOURCE[0]}")/.shared"
-[[ -e $shared_lib ]] || curl "https://raw.githubusercontent.com/vegardit/docker-shared/v1/download.sh?_=$(date +%s)" | bash -s v1 "$shared_lib" || exit 1
+[[ -e $shared_lib ]] || curl "https://raw.githubusercontent.com/MarioWi/docker-shared/v1/download.sh?_=$(date +%s)" | bash -s v1 "$shared_lib" || exit 1
 # shellcheck disable=SC1091  # Not following: $shared_lib/lib/build-image-init.sh was not specified as input
 source "$shared_lib/lib/build-image-init.sh"
 
@@ -21,7 +21,7 @@ fi
 #################################################
 # specify target image repo/tag
 #################################################
-image_repo=${DOCKER_IMAGE_REPO:-vegardit/softhsm2-pkcs11-proxy}
+image_repo=${DOCKER_IMAGE_REPO:-mariowi/softhsm2-pkcs11-proxy}
 base_image_name=${DOCKER_BASE_IMAGE:-alpine:3}
 case $base_image_name in
    *alpine*) base_image_linux_flavor=alpine ;;
@@ -187,6 +187,9 @@ build_opts=(
    #--build-arg PKCS11_PROXY_SOURCE_URL="https://codeload.github.com/scobiej/pkcs11-proxy/tar.gz/refs/heads/osx-openssl1-1"
    #--build-arg PKCS11_PROXY_SOURCE_URL="https://codeload.github.com/SUNET/pkcs11-proxy/tar.gz/refs/heads/master"
 )
+if [[ -n "${{ $SSH_PUB_KEY }}" ]]; then
+   build_opts+=(--build-arg SSH_PUB_KEY="$SSH_PUB_KEY")
+fi
 
 if [[ ${build_multi_arch:-} == "true" ]]; then
    build_opts+=(--push)

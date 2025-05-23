@@ -187,7 +187,7 @@ build_opts=(
    #--build-arg PKCS11_PROXY_SOURCE_URL="https://codeload.github.com/scobiej/pkcs11-proxy/tar.gz/refs/heads/osx-openssl1-1"
    #--build-arg PKCS11_PROXY_SOURCE_URL="https://codeload.github.com/SUNET/pkcs11-proxy/tar.gz/refs/heads/master"
 )
-if [[ -n "${{ $SSH_PUB_KEY }}" ]]; then
+if [[ -n "${{SSH_PUB_KEY}}" ]]; then
    build_opts+=(--build-arg SSH_PUB_KEY="$SSH_PUB_KEY")
 fi
 

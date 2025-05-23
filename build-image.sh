@@ -10,7 +10,7 @@ function curl() {
 }
 
 shared_lib="$(dirname "${BASH_SOURCE[0]}")/.shared"
-[[ -e $shared_lib ]] || curl "https://raw.githubusercontent.com/MarioWi/docker-shared/v1/download.sh?_=$(date +%s)" | bash -s v1 "$shared_lib" || exit 1
+[[ -e $shared_lib ]] || curl "https://raw.githubusercontent.com/mariowi/docker-shared/v1/download.sh?_=$(date +%s)" | bash -s v1 "$shared_lib" || exit 1
 # shellcheck disable=SC1091  # Not following: $shared_lib/lib/build-image-init.sh was not specified as input
 source "$shared_lib/lib/build-image-init.sh"
 
